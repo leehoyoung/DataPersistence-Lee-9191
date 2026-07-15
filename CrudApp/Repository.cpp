@@ -52,11 +52,29 @@ void RecordRepository::save() const {
         root.push_back(r.toJson());
     }
 
-    std::ofstream out(filePath_, std::ios::binary | std::ios::trunc);
-    if (!out.is_open()) {
-        throw std::runtime_error("파일에 쓸 수 없습니다: " + filePath_);
+    // 저장 도중 프로세스가 중단되어도 기존 파일이 손상되지 않도록
+    // 임시 파일에 먼저 쓴 뒤 원자적으로 rename하여 교체한다.
+    std::filesystem::path tmpPath = path;
+    tmpPath += ".tmp";
+
+    {
+        std::ofstream out(tmpPath, std::ios::binary | std::ios::trunc);
+        if (!out.is_open()) {
+            throw std::runtime_error("임시 파일에 쓸 수 없습니다: " + tmpPath.string());
+        }
+        out << root.dump(2);
+        out.flush();
+        if (!out) {
+            throw std::runtime_error("임시 파일 쓰기에 실패했습니다: " + tmpPath.string());
+        }
     }
-    out << root.dump(2);
+
+    std::error_code ec;
+    std::filesystem::rename(tmpPath, path, ec);
+    if (ec) {
+        std::filesystem::remove(tmpPath);
+        throw std::runtime_error("파일 교체(rename)에 실패했습니다: " + path.string() + " (" + ec.message() + ")");
+    }
 }
 
 const Record* RecordRepository::findById(int id) const {
