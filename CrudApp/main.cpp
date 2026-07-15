@@ -2,6 +2,7 @@
 #include <string>
 #include <optional>
 #include <limits>
+#include <windows.h>
 #include "Repository.h"
 
 namespace {
@@ -178,6 +179,9 @@ void printMenu() {
 } // namespace
 
 int main() {
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
     RecordRepository repo("data/records.json");
     repo.load();
 
